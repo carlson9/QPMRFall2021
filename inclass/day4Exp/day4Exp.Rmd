@@ -1,7 +1,7 @@
 ---
 title: "Day 4 - Exponential Family"
 author: "David Carlson"
-date: "October 7, 2020"
+date: "November 10, 2021"
 output: pdf_document
 ---
 
