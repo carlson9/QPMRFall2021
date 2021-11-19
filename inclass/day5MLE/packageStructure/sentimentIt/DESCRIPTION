@@ -1,0 +1,22 @@
+Package: sentimentIt
+Title: Crowdsourced Pairwise Sentiment Text Analysis
+Version: 0.1
+Authors@R: c(
+    person("David", "Carlson", email = "carlson.david@wustl.edu", role = c("aut", "cre")),
+    person("Jacob M.", "Montgomery", email = "jacob.montgomery@wustl.edu", role = "aut"))
+Description: This package interacts with the SentimentIt API for sentiment analysis of text through crowdsourcing. By having workers complete pairwise comparisons of documents, a researcher-specified latent trait of interest is estimated, with full posteriors, for each document in the set. If the fullest functionality of the package is exploited, the documents will be sent to the server, workers will be monitored for performance and removed from future participation if providing poor quality data, all of the data will be saved and returned, and a Stan model will be run, saved, and returned.
+Depends: R (>= 3.1.0),
+    Rcpp
+Imports:
+    plyr,
+    jsonlite,
+    httr,
+    RCurl,
+    rstan
+Suggests: knitr,
+    rmarkdown,
+    testthat
+LazyData: true
+License: GPL (>= 2)
+RoxygenNote: 6.0.1
+VignetteBuilder: knitr

@@ -1,0 +1,161 @@
+---
+title: "SentimentIt: Analyzing data from completed pairwise comparisons"
+author: ""
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{sentimentIt vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Background
+
+This is a tutorial on how to use the SentimentIt R package. SentimentIt provides a pairwise comparison framework for fast, flexible, and reliable human coding of political texts. The tutorial consists of three separate vignettes: one explaining how to send comparisons to Mechanical Turk and retrieve data, a second explaining how to perform analysis once data has been retreived, and a third explaining how to regulate who can work on your comparisons in Mechanical Turk. This is the second of the three tutorials.
+
+The system we designed, which we label SentimentIt, is based on the following principles. First, it leverages human ability to understand language and socially constructed political concepts. Thus, our focus is measuring researcher-defined characteristics embedded within text (e.g., positivity). However, we exclude explicitly subjective characteristics (e.g., persuasiveness).
+
+Second, we designed the task structure to be cognitively appropriate for non-experts. Specifically, we ask workers to conduct pairwise comparisons of texts, simply indicating which text is more extreme along a single dimension of interest (e.g., “Which text is more positive?”). A significant body of research indicates that pairwise comparisons can reduce the cognitive burden for respondents, improve the reliability of responses, and eliminate problems such as differential item functioning and reference group effects that plague alternative question formats such as Likert scales or sliders (e.g., King et al. 2004; Oishi et al. 2005).
+
+Before reading this vignette, it is important to read the sending_data vignette to learn how to create batches of comparisons from your data, send these comparisons to Mechanical Turk, and retrieve data from Mechanical Turk once the comparisons are completed.
+
+A diagram of the SentimentIt workflow is shown below.
+
+![**SentimentIt Workflow**](sentimentit_workflow.png)
+
+## fitStan
+
+Once you have sent batches of comparisons to Mechanical Turk and retrieved the results, you can obtain document-level estimates of the dimension of interest and also estimate the reliability of the workers completing each task using a Stan model. For more information on Stan models, refer to page 7 of the following paper: https://www.sentimentit.com/SentimentIt.pdf (Carlson + Montgomery).
+
+The data simply indicate which of the two documents was selected, the unique worker ID, and the time the task was completed. We process the data using a random utility model (closely related to standard item response models) that creates document-level estimates along the dimension of interest. Specifically, we model the probability that one document would be chosen over another, while estimating worker reliability given the choices made by that worker.
+
+You can fit either a non-hierarchical or a hierarchical Stan model. To estimate a non-hierarchical Stan model, use the `fitStan()` function. To estimate a hierarchical Stan model, use the `fitStanHier()` function. For the `data` parameter, you can input the batch IDs for the batches you would like to include, which requires you to include your SentimentIt email and password. Alternately, if you have already pulled in data from a batch using the `readInData()` function, you can input this data for the `data` parameter, in which case you don't need to include `email` or `password`. Examples are shown below.
+
+To use the `fitStan()` function, you must have a C++ compiler on your machine. If you receive an error in the `fitStan()` function, refer to the following link to ensure you have properly installed RStan on your machine: https://github.com/stan-dev/rstan/wiki/RStan-Mac-OS-X-Prerequisite-Installation-Instructions#step-2--install-c-toolchain.
+
+### Syntax
+
+```{r, eval = FALSE}
+
+#fitting a non-hierarchical Stan model using batch ID numbers
+
+stan_model <- fitStan(email = "johndoe@school.edu", password = "12345",
+                      data = batch_ids)
+
+#alternately, you can use the output from readInData()
+
+stan_model <- fitStan(data = comp_output)
+```
+
+### Inputs
+
+`fitStan()` accepts the following arguments:
+
+-   `email`: Character vector, the email address for the registered SentimentIt account.
+
+-   `password`: Character vector, the password associated with `email`.
+
+-   `data`: Numeric vector containing the batch IDs for the comparisons to be used in the model. Can also be a data frame containing the output from the `readInData()` function.
+
+-   `chains`: Integer, the number of chains. (Default is 3).
+
+-   `iter`: Numeric vector, the number of iteration. (Default is 2500).
+
+-   `seed`: Set seed. (Defalt is 1234).
+
+-   `n.cores`: Integer vector, the number of cores to be used in Stan fit (Default is 3).
+
+### Output
+
+The `fitStan()` function outputs a list containing 1) an object of class `stanfit` that can be used in the `checkWorkers()` function to obtain estimates of worker reliability (example below) and 2) a data frame of mean estimates on the latent scale of interest for each object from the data. In addition to the mean estimates, the data frame contains the standard deviation, 2.5%, 25%, 50%, 75%, and 97.5% quantile estimates, sample size (n_eff), and the Rhat statistic.
+
+The data frame returned by `fitStan()` includes the ID number for each document used in the pairwise comparison. To merge the estimates with the original text data used in the comparison, merge the data frame with the data frame previously returned by the `readText()` function (refer to the sending_data vignette). Both data frames should contain the unique ID numbers for each document, and by using the `merge()` function on these two columns, the estimates can be joined with the original text. An example of this is shown below.
+
+```{r, eval = FALSE}
+
+#merging the data frame from the stan model with the output from the 
+#readText() function (see the sending_data vignette). Both datasets 
+#should contain a column of unique document IDs, and we specify this 
+#column as the basis of the merge. 
+
+merged_data <- merge(x = stan_model[[2]], 
+                     y = reviews_with_ids,
+                     by = "ids")
+
+```
+
+## fitStanHier
+
+To fit a hierarchical Stan model, you must use `fitStanHier()` instead of `fitStan()`. An example where a hierarchical Stan model could be necessary is if you are trying to get paragraph-level posterior estimates for many different documents. To estimate a hierarchical Stan model in SentimentIt, you must follow the same steps to estimate a non-hierarchical model, and you must additionally specify the data and, more specifically, the variable that is used as a hierarchy. 
+
+### Syntax
+
+```{r, eval = FALSE}
+
+#fitting a hierarchical Stan model
+
+stan_hier_model <- fitStanHier(email = "johndoe@school.edu", password = "12345",
+                          data = hier_batch_ids, hierarchy_data = hier_data_with_ids,
+                          hierarchy_var = hier_data_with_ids$document_id)
+
+```
+
+### Inputs
+
+`fitStanHier()` accepts the following arguments:
+
+-   `email`: Character vector, the email address for the registered SentimentIt account.
+
+-   `password`: Character vector, the password associated with `email`.
+
+-   `data`: Numeric vector containing the batch IDs for the comparisons to be used in the model. Can also be a data frame containing the output from the `readInData()` function.
+
+-   `hierarchy_data`: A file that contains the variable that is used as a hierarchy, with column ids filled with SentimentIt document IDs (created from `readText()`).
+
+-   `hierarchy_var`: The name of the variable in `hierarchy_data` that is used as a hierarchy.
+
+-   `chains`: Integer, the number of chains. (Default is 3).
+
+-   `iter`: Numeric vector, the number of iteration. (Default is 2500).
+
+-   `seed`: Set seed. (Defalt is 1234).
+
+-   `n.cores`: Integer vector, the number of cores to be used in Stan fit (Default is 3).
+
+### Output
+
+The `fitStanHier()` function outputs a list containing 1) an object of class `stanfit` that can be used in the `checkWorkers()` function to obtain estimates of worker reliability (example below) 2) a matrix with the full posteriors of the lower-level estimates merged with the document IDs from the SentimentIt server and 3) a matrix with the full posteriors of the higher-level estimates merged with the hierarchical identifier.
+
+## checkWorkers
+
+Once you have used the `fitStan()` (or `fitStanHier()`) function to estimate a Stan model, you can use this model to identify workers who are unreliable. The output from the Stan model, as well as the output from the completed comparisons, is required to identify unreliable workers.
+
+Use the `checkWorkers()` function to detect these outlying workers. This function returns a vector of IDs identifying workers who are unreliable. 
+
+```{r, eval = FALSE}
+
+ban_workers <- checkWorkers(stan_fit = stan_model[[1]], data = comp_output)
+```
+
+`checkWorkers()` accepts the following arguments:
+
+-   `stan_fit`: A Stan model fit.
+
+-   `data`: The data used to fit the Stan model.
+
+-   `cut_point`: A cutoff point to classify posterior coefficients. The proportion of posterior coefficients below `cut_point` is used to determine outliers (Default is 1).
+
+-   `cut_proportion`: A cutoff proportion of posterior coefficients below `cut_point`. If the proportion of posterior coefficients below `cut_points` is higher than `cut_proportion`, a worker will be considered as an outlier provided that she answers more than the number of questions in `n.questions` (Default is 0.9) The number of posterior draws for a worker must be below the cut proportion or that worker will be considered an outlier.
+
+-   `n.questions`: The number of questions to consider in order to determine suggested banned workers (Default is 50).
+
+-   `plot_hist`: If TRUE, plot the histogram of workers with a rug plot. Default is FALSE.
+
+-   `hist_path`: Save the histogram to path and file name specified. Default is NULL and no plot is saved.
+
+The `checkWorkers()` function outputs a list containing two items: 1) a character vector and 2) a matrix.
+
+Reference Paper
+------
+
+CARLSON, D., & MONTGOMERY, J. (2017). A Pairwise Comparison Framework for Fast, Flexible, and Reliable Human Coding of Political Texts. <i>American Political Science Review,</i> <i>111</i>(4), 835-843. doi:10.1017/S0003055417000302

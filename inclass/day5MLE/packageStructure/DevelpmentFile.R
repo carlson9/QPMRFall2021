@@ -1,0 +1,10 @@
+library(devtools)
+library(roxygen2)
+setwd('/home/david/QPMR/classwork/day5MLE/packageStructure/')
+current.code <- as.package("LMPack")
+load_all(current.code)
+document(current.code)
+check(current.code)
+install(pkg=current.code,local=TRUE)
+build(current.code,path=getwd())
+
