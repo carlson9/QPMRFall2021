@@ -1,4 +1,4 @@
-setwd('~/QPMRFall2021/inclass/day5GLM/')
+setwd('~/QPMRFall2021/inclass/day5MLE/')
 library(readstata13)
 data = read.dta13('repdata.dta')
 
