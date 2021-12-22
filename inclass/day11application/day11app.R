@@ -109,6 +109,7 @@ colnames(biLMtab) = colnames(summary(get(paste0('mod', vars[i + 1])))$coef)
 
 #what about a temporal effect?
 #this is when we can turn to GPs (more details next week)
+data2 = as.data.frame(data2)
 data3 = na.omit(data.frame('NY.GDP.PCAP.KD.ZG' = data2$NY.GDP.PCAP.KD.ZG, 'interNet' = data2$interNet))
 data3$time = rownames(data3)
 library(kernlab)
